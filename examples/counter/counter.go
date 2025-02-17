@@ -69,7 +69,7 @@ func (m *Increment) Decode(accounts []solana.PublicKey, data []byte) error {
 	}
 	m.Accounts.Counter = accounts[0]
 	m.Accounts.User = accounts[1]
-	for _, item := range accounts {
+	for _, item := range accounts[2:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])
@@ -140,7 +140,7 @@ func (m *Initialize) Decode(accounts []solana.PublicKey, data []byte) error {
 	m.Accounts.Counter = accounts[0]
 	m.Accounts.User = accounts[1]
 	m.Accounts.SystemProgram = accounts[2]
-	for _, item := range accounts {
+	for _, item := range accounts[3:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])

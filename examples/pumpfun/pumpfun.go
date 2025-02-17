@@ -76,7 +76,7 @@ func (m *Initialize) Decode(accounts []solana.PublicKey, data []byte) error {
 	m.Accounts.Global = accounts[0]
 	m.Accounts.User = accounts[1]
 	m.Accounts.SystemProgram = accounts[2]
-	for _, item := range accounts {
+	for _, item := range accounts[3:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])
@@ -167,7 +167,7 @@ func (m *SetParams) Decode(accounts []solana.PublicKey, data []byte) error {
 	m.Accounts.SystemProgram = accounts[2]
 	m.Accounts.EventAuthority = accounts[3]
 	m.Accounts.Program = accounts[4]
-	for _, item := range accounts {
+	for _, item := range accounts[5:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])
@@ -309,7 +309,7 @@ func (m *Create) Decode(accounts []solana.PublicKey, data []byte) error {
 	m.Accounts.Rent = accounts[11]
 	m.Accounts.EventAuthority = accounts[12]
 	m.Accounts.Program = accounts[13]
-	for _, item := range accounts {
+	for _, item := range accounts[14:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])
@@ -438,7 +438,7 @@ func (m *Buy) Decode(accounts []solana.PublicKey, data []byte) error {
 	m.Accounts.Rent = accounts[9]
 	m.Accounts.EventAuthority = accounts[10]
 	m.Accounts.Program = accounts[11]
-	for _, item := range accounts {
+	for _, item := range accounts[12:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])
@@ -567,7 +567,7 @@ func (m *Sell) Decode(accounts []solana.PublicKey, data []byte) error {
 	m.Accounts.TokenProgram = accounts[9]
 	m.Accounts.EventAuthority = accounts[10]
 	m.Accounts.Program = accounts[11]
-	for _, item := range accounts {
+	for _, item := range accounts[12:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])
@@ -687,7 +687,7 @@ func (m *Withdraw) Decode(accounts []solana.PublicKey, data []byte) error {
 	m.Accounts.Rent = accounts[8]
 	m.Accounts.EventAuthority = accounts[9]
 	m.Accounts.Program = accounts[10]
-	for _, item := range accounts {
+	for _, item := range accounts[11:] {
 		m.RemainingAccounts = append(m.RemainingAccounts, solana.Meta(item))
 	}
 	dec := bin.NewBorshDecoder(data[len(m.Discriminator()):])

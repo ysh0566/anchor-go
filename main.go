@@ -299,7 +299,7 @@ func generateInstructions(idl *IDL, f *jen.File, keepComment bool) error {
 					for i, acct := range instruction.Accounts {
 						group.Id("m").Dot("Accounts").Dot(snakeToCamel(acct.Name)).Op("=").Id("accounts").Index(jen.Lit(i))
 					}
-					group.For(jen.List(jen.Id("_"), jen.Id("item")).Op(":=").Range().Id("accounts")).Block(
+					group.For(jen.List(jen.Id("_"), jen.Id("item"))).Op(":=").Range().Id("accounts").Index(jen.Lit(len(instruction.Accounts)).Op(":")).Block(
 						jen.Id("m").Dot("RemainingAccounts").
 							Op("=").
 							Append(jen.Id("m").Dot("RemainingAccounts"), jen.Qual("github.com/gagliardetto/solana-go", "Meta").Call(jen.Id("item"))),
