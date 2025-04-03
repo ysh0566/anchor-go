@@ -1,4 +1,4 @@
-module github.com/exc-works/solana-idl-generator
+module github.com/ysh0566/anchor-go
 
 go 1.23.2
 

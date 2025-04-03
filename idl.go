@@ -3,10 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+
 	"github.com/dave/jennifer/jen"
 	"github.com/gagliardetto/solana-go"
-	"strconv"
 )
+
+type Pda struct {
+	Seeds []struct {
+		Kind  string `json:"kind"`
+		Value []byte `json:"value,omitempty"`
+		Path  string `json:"path,omitempty"`
+	} `json:"seeds"`
+	Program *Program `json:"program,omitempty"`
+}
+
+type Program struct {
+	Kind  string `json:"kind"`
+	Value []byte `json:"value"`
+}
 
 type IDL struct {
 	Address solana.PublicKey `json:"address"`
@@ -29,20 +44,10 @@ type IDL struct {
 			Name      string   `json:"name"`
 			Relations []string `json:"relations,omitempty"`
 			Writable  bool     `json:"writable,omitempty"`
-			Pda       struct {
-				Seeds []struct {
-					Kind  string `json:"kind"`
-					Value []int  `json:"value,omitempty"`
-					Path  string `json:"path,omitempty"`
-				} `json:"seeds"`
-				Program struct {
-					Kind  string `json:"kind"`
-					Value []int  `json:"value"`
-				} `json:"program,omitempty"`
-			} `json:"pda,omitempty"`
-			Signer  bool     `json:"signer,omitempty"`
-			Address string   `json:"address,omitempty"`
-			Docs    []string `json:"docs,omitempty"`
+			Pda       *Pda     `json:"pda,omitempty"`
+			Signer    bool     `json:"signer,omitempty"`
+			Address   string   `json:"address,omitempty"`
+			Docs      []string `json:"docs,omitempty"`
 		} `json:"accounts"`
 		Args []struct {
 			Name string   `json:"name"`
@@ -93,6 +98,8 @@ type TypeKind struct {
 	ArrayKind [2]ArrayElement `json:"array"`
 
 	Defined string
+
+	Option bool
 }
 
 func (kind TypeKind) GoType() jen.Code {
@@ -130,11 +137,15 @@ func (kind TypeKind) GoType() jen.Code {
 			return nil // Not supported yet
 		}
 	}
+	var res = &jen.Statement{}
+	if kind.Option {
+		res = res.Op("*")
+	}
 	if kind.Scalar {
-		return scalarMapping(kind.ScalarKind)
+		return res.Add(scalarMapping(kind.ScalarKind))
 	}
 	if kind.Defined != "" {
-		return jen.Id(kind.Defined)
+		return res.Add(jen.Id(kind.Defined))
 	}
 
 	var arrayType jen.Code
@@ -146,7 +157,7 @@ func (kind TypeKind) GoType() jen.Code {
 			return nil // Not supported yet
 		}
 	}
-	return jen.Index(jen.Id(strconv.Itoa(kind.ArrayKind[1].ArrayLength))).Add(arrayType)
+	return res.Add(jen.Index(jen.Id(strconv.Itoa(kind.ArrayKind[1].ArrayLength))).Add(arrayType))
 }
 
 func (kind *TypeKind) UnmarshalJSON(bz []byte) error {
@@ -161,10 +172,18 @@ func (kind *TypeKind) UnmarshalJSON(bz []byte) error {
 		Defined struct {
 			Name string `json:"name"`
 		} `json:"defined"`
-		Array [2]ArrayElement `json:"array"`
+		Array  [2]ArrayElement `json:"array"`
+		Option json.RawMessage `json:"option"`
 	}{}
 	if err := json.Unmarshal(bz, &obj); err != nil {
 		return err
+	}
+	if obj.Option != nil {
+		if err := kind.UnmarshalJSON(obj.Option); err != nil {
+			return err
+		}
+		kind.Option = true
+		return nil
 	}
 	if obj.Defined.Name == "" && obj.Array[1].ArrayLength == 0 {
 		return fmt.Errorf("unsupported type kind: %s", string(bz))
