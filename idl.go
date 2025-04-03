@@ -94,7 +94,7 @@ type TypeKind struct {
 	Scalar     bool // indicates that the type is a scalar, e.g. u64, i64, etc.
 	ScalarKind string
 
-	Array     bool            // indicates that the type is an array
+	Vec       bool            // indicates that the type is an vector
 	ArrayKind [2]ArrayElement `json:"array"`
 
 	Defined string
@@ -133,8 +133,10 @@ func (kind TypeKind) GoType() jen.Code {
 			return jen.String()
 		case "pubkey", "publicKey":
 			return jen.Qual("github.com/gagliardetto/solana-go", "PublicKey")
+		case "bytes":
+			return jen.Index().Byte()
 		default:
-			return nil // Not supported yet
+			panic(fmt.Sprintf("unsupported scalar type: %s", scalar))
 		}
 	}
 	var res = &jen.Statement{}
@@ -146,6 +148,9 @@ func (kind TypeKind) GoType() jen.Code {
 	}
 	if kind.Defined != "" {
 		return res.Add(jen.Id(kind.Defined))
+	}
+	if kind.Vec {
+		return res.Add(jen.Index().Add(scalarMapping(kind.ScalarKind)))
 	}
 
 	var arrayType jen.Code
@@ -174,6 +179,7 @@ func (kind *TypeKind) UnmarshalJSON(bz []byte) error {
 		} `json:"defined"`
 		Array  [2]ArrayElement `json:"array"`
 		Option json.RawMessage `json:"option"`
+		Vec    json.RawMessage `json:"vec"`
 	}{}
 	if err := json.Unmarshal(bz, &obj); err != nil {
 		return err
@@ -185,6 +191,14 @@ func (kind *TypeKind) UnmarshalJSON(bz []byte) error {
 		kind.Option = true
 		return nil
 	}
+	if obj.Vec != nil {
+		if err := kind.UnmarshalJSON(obj.Vec); err != nil {
+			return err
+		}
+		kind.Vec = true
+		return nil
+	}
+
 	if obj.Defined.Name == "" && obj.Array[1].ArrayLength == 0 {
 		return fmt.Errorf("unsupported type kind: %s", string(bz))
 	}
