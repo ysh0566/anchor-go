@@ -336,7 +336,15 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 		calculateAccountsCode := jen.Statement{}
 		for _, acct := range instruction.Accounts {
 			accountPublicName := snakeToCamel(acct.Name)
-			if acct.Pda == nil {
+			if acct.Address != "" {
+				calculateAccountsCode.Add(
+					jen.List(jen.Id("m").Dot("accounts").Dot(accountPublicName)).Op("=").Qual(
+						"github.com/gagliardetto/solana-go",
+						"MustPublicKeyFromBase58",
+					).Call(
+						jen.Lit(acct.Address)),
+					jen.Line())
+			} else if acct.Pda == nil {
 				// func: SetAccount
 				accountSetterCode.Add(jen.Func().Parens(jen.Id("m").Op("*").Id(instructionName)).
 					Id("SetAccount"+accountPublicName).Params(jen.Id("account").Qual("github.com/gagliardetto/solana-go", "PublicKey")).
