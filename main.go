@@ -200,21 +200,20 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 		file.Add(jen.Type().Id(accountsID).Struct(append(acctFields, remainingAccounts)...).Line())
 		instructionStructFields = append(instructionStructFields, jen.Id("accounts").Qual("", accountsID))
 
-		if len(instruction.Args) != 0 {
-			argsID = fmt.Sprintf("%sArgsStruct", instructionName)
-			argFields := make([]jen.Code, len(instruction.Args))
-			for i, arg := range instruction.Args {
-				goType := arg.Type.GoType()
-				if goType == nil {
-					panic(fmt.Sprintf("arg %s is not supported", arg.Name))
-				}
-				goField := jen.Id(snakeToCamel(arg.Name)).Add(goType)
-				argFields[i] = goField
+		argsID = fmt.Sprintf("%sArgsStruct", instructionName)
+		argFields := make([]jen.Code, len(instruction.Args))
+		for i, arg := range instruction.Args {
+			goType := arg.Type.GoType()
+			if goType == nil {
+				panic(fmt.Sprintf("arg %s is not supported", arg.Name))
 			}
-			// struct InstructionArgs
-			file.Add(jen.Type().Id(argsID).Struct(argFields...).Line())
-			instructionStructFields = append(instructionStructFields, jen.Id("args").Qual("", argsID))
+			goField := jen.Id(snakeToCamel(arg.Name)).Add(goType)
+			argFields[i] = goField
 		}
+		// struct InstructionArgs
+		file.Add(jen.Type().Id(argsID).Struct(argFields...).Line())
+		instructionStructFields = append(instructionStructFields, jen.Id("args").Op("*").Qual("", argsID))
+
 		instructionStructFields = append(instructionStructFields, jen.Id("programID").Op("*").Qual("github.com/gagliardetto/solana-go", "PublicKey"))
 		// struct Instruction
 		file.Add(instructionStruct.Struct(instructionStructFields...))
@@ -254,7 +253,7 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 		if argsID != "" {
 			encodeArgsState.Add(jen.Id("enc").Op(":=").Qual("github.com/gagliardetto/binary", "NewBorshEncoder").Call(jen.Op("&").Id("buf")),
 				jen.Line(),
-				jen.Err().Op(":=").Id("enc").Dot("Encode").Call(jen.Op("&").Id("m").Dot("args")),
+				jen.Err().Op(":=").Id("enc").Dot("Encode").Call(jen.Id("m").Dot("args")),
 				jen.Line(),
 				jen.If(jen.Err().Op("!=").Nil()).Block(
 					jen.Return(jen.Nil(), jen.Err()),
@@ -326,7 +325,7 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 						group.Id("dec").Op(":=").Qual("github.com/gagliardetto/binary", "NewBorshDecoder").Call(
 							jen.Id("data").Index(jen.Len(jen.Id("m").Dot("Discriminator").Call()).Op(":")),
 						)
-						group.Return(jen.Id("dec").Dot("Decode").Call(jen.Op("&").Id("m").Dot("args")))
+						group.Return(jen.Id("dec").Dot("Decode").Call(jen.Id("m").Dot("args")))
 					}
 				}).
 				Line(),
@@ -411,6 +410,7 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 		))
 
 		file.Add(generateAccounts(instructionName))
+		file.Add(generateArgsSetter(instructionName))
 		file.Add(generateArgs(instructionName))
 	}
 	return generateInstructionDecoder(idl, file)
@@ -510,7 +510,17 @@ func generateArgs(instructionName string) jen.Code {
 	return jen.Func().
 		Parens(jen.Id("m").Op("*").Id(instructionName)).
 		Id("Args").Params().Op("*").Id(fmt.Sprintf("%sArgsStruct", instructionName)).Block(
-		jen.Return(jen.Op("&").Id("m").Dot("args")),
+		jen.Return(jen.Id("m").Dot("args")),
+	)
+}
+
+func generateArgsSetter(instructionName string) jen.Code {
+	return jen.Func().
+		Parens(jen.Id("m").Op("*").Id(instructionName)).
+		Id("SetArgs").Params(jen.Id("args").Op("*").Id(fmt.Sprintf("%sArgsStruct", instructionName))).
+		Op("*").Id(instructionName).Block(
+		jen.Id("m").Dot("args").Op("=").Id("args"),
+		jen.Return(jen.Id("m")),
 	)
 }
 
