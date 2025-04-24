@@ -61,6 +61,10 @@ type IDL struct {
 
 		Type Type `json:"type"` // compatible with earlier versions
 	} `json:"accounts"`
+	Events []struct {
+		Name          string `json:"name"`
+		Discriminator []byte `json:"discriminator"`
+	} `json:"events"`
 	Errors []struct {
 		Code int    `json:"code"`
 		Name string `json:"name"`

@@ -110,7 +110,9 @@ func generate(idl *IDL,
 				goField = jen.Id(snakeToCamel(field.Name))
 			}
 			goField.Add(goType)
-
+			if field.Type.Option {
+				goField = goField.Tag(map[string]string{"bin": "optional"})
+			}
 			goFields = append(goFields, goField)
 		}
 		if includeUnsupportedFields {
@@ -122,6 +124,17 @@ func generate(idl *IDL,
 		hasDiscriminator := false
 		// generate discriminator method
 		for _, acct := range idl.Accounts {
+			if acct.Name != t.Name {
+				continue
+			}
+			hasDiscriminator = true
+			// func: Discriminator
+			f.Add(generateDiscriminator(t.Name, acct.Discriminator).Line())
+			break
+		}
+
+		// generate discriminator method
+		for _, acct := range idl.Events {
 			if acct.Name != t.Name {
 				continue
 			}
