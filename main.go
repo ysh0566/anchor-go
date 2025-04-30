@@ -338,7 +338,7 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 						group.Id("dec").Op(":=").Qual("github.com/gagliardetto/binary", "NewBorshDecoder").Call(
 							jen.Id("data").Index(jen.Len(jen.Id("m").Dot("Discriminator").Call()).Op(":")),
 						)
-						group.Return(jen.Id("dec").Dot("Decode").Call(jen.Id("m").Dot("args")))
+						group.Return(jen.Id("dec").Dot("Decode").Call(jen.Op("&").Id("m").Dot("args")))
 					}
 				}).
 				Line(),
@@ -348,24 +348,28 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 		calculateAccountsCode := jen.Statement{}
 		for _, acct := range instruction.Accounts {
 			accountPublicName := snakeToCamel(acct.Name)
+			// func: SetAccount
+			accountSetterCode.Add(jen.Func().Parens(jen.Id("m").Op("*").Id(instructionName)).
+				Id("SetAccount"+accountPublicName).Params(jen.Id("account").Qual("github.com/gagliardetto/solana-go", "PublicKey")).
+				Op("*").Id(instructionName).
+				Block(
+					jen.Id("m").Dot("accounts").Dot(accountPublicName).Op("=").Id("account"),
+					jen.Return(jen.Id("m")),
+				).
+				Line(),
+			)
+
 			if acct.Address != "" {
 				calculateAccountsCode.Add(
-					jen.List(jen.Id("m").Dot("accounts").Dot(accountPublicName)).Op("=").Qual(
-						"github.com/gagliardetto/solana-go",
-						"MustPublicKeyFromBase58",
-					).Call(
-						jen.Lit(acct.Address)),
-					jen.Line())
+					jen.If(jen.Id("m").Dot("accounts").Dot(accountPublicName).Dot("IsZero").Call()).Block(
+						jen.List(jen.Id("m").Dot("accounts").Dot(accountPublicName)).Op("=").Qual(
+							"github.com/gagliardetto/solana-go",
+							"MustPublicKeyFromBase58",
+						).Call(
+							jen.Lit(acct.Address)),
+						jen.Line())).Line()
 			} else if acct.Pda == nil {
-				// func: SetAccount
-				accountSetterCode.Add(jen.Func().Parens(jen.Id("m").Op("*").Id(instructionName)).
-					Id("SetAccount"+accountPublicName).Params(jen.Id("account").Qual("github.com/gagliardetto/solana-go", "PublicKey")).
-					Op("*").Id(instructionName).
-					Block(
-						jen.Id("m").Dot("accounts").Dot(accountPublicName).Op("=").Id("account"),
-						jen.Return(jen.Id("m")),
-					).
-					Line())
+
 			} else {
 				seeds := jen.Statement{}
 				for _, seed := range acct.Pda.Seeds {
@@ -397,16 +401,18 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 					programIDSatement = jen.Qual("github.com/gagliardetto/solana-go", "MustPublicKeyFromBase58").Call(jen.Lit(programIDString))
 				}
 				calculateAccountsCode.Add(
-					jen.List(jen.Id("m").Dot("accounts").Dot(accountPublicName), jen.Id("_"), jen.Id("err")).Op("=").Qual(
-						"github.com/gagliardetto/solana-go",
-						"FindProgramAddress",
-					).Call(
-						jen.Index().Index().Byte().Add(seedsGroup), programIDSatement),
-					jen.Line(),
-					jen.If(jen.Id("err").Op("!=").Nil()).Block(
-						jen.Return(jen.Id("err")),
-					),
-					jen.Line())
+					jen.If(jen.Id("m").Dot("accounts").Dot(accountPublicName).Dot("IsZero").Call()).Block(
+						jen.List(jen.Id("m").Dot("accounts").Dot(accountPublicName), jen.Id("_"), jen.Id("err")).Op("=").Qual(
+							"github.com/gagliardetto/solana-go",
+							"FindProgramAddress",
+						).Call(
+							jen.Index().Index().Byte().Add(seedsGroup), programIDSatement),
+						jen.Line(),
+						jen.If(jen.Id("err").Op("!=").Nil()).Block(
+							jen.Return(jen.Id("err")),
+						),
+						jen.Line()).Line(),
+				)
 			}
 		}
 
