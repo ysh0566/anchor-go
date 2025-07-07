@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -35,7 +36,9 @@ func main() {
 		if err := json.Unmarshal(data, &idl); err != nil {
 			return fmt.Errorf("unmarshal idl failed: %v", err)
 		}
-
+		for i := range idl.Instructions {
+			idl.Instructions[i].Accounts = sortAccounts(idl.Instructions[i].Accounts)
+		}
 		src, err := generate(&idl, *packageName, *keepComment, *decodeStruct, *instructions)
 		if err != nil {
 			return err
@@ -576,4 +579,59 @@ func snakeToPrivateCamel(snake string) string {
 		parts[i] = cases.Title(language.English, cases.NoLower).String(parts[i])
 	}
 	return strings.Join(parts, "")
+}
+
+func sortAccounts(accounts []Account) []Account {
+	dependencies := make(map[string][]string)
+	for _, account := range accounts {
+		dependencies[account.Name] = make([]string, 0)
+		if account.Pda != nil {
+			for _, seed := range account.Pda.Seeds {
+				// no dependencies for const or arg seeds
+				if seed.Kind == "const" || seed.Kind == "arg" {
+					continue
+				}
+				if seed.Kind != "account" {
+					panic("unknown kind for pda generation: " + seed.Kind)
+				}
+				dependencies[account.Name] = append(dependencies[account.Name], seed.Path) // A需要哪些依赖 eg, BC
+			}
+		}
+	}
+
+	inDegree := make(map[string]int)
+	queue := list.New()
+	for name, value := range dependencies {
+		inDegree[name] = len(value)
+		if len(value) == 0 {
+			queue.PushBack(name)
+		}
+	}
+	sortedNames := make([]string, 0)
+	for queue.Len() > 0 {
+		front := queue.Front()
+		name := front.Value.(string)
+		queue.Remove(front)
+		sortedNames = append(sortedNames, name)
+		for name2, dependency := range dependencies {
+			for _, dependencyName := range dependency {
+				if dependencyName == name {
+					inDegree[name2]--
+					if inDegree[name2] == 0 {
+						queue.PushBack(name2)
+					}
+				}
+			}
+
+		}
+	}
+	newAccounts := make([]Account, 0)
+	for _, name := range sortedNames {
+		for _, account := range accounts {
+			if account.Name == name {
+				newAccounts = append(newAccounts, account)
+			}
+		}
+	}
+	return newAccounts
 }

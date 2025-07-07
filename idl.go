@@ -38,18 +38,10 @@ type IDL struct {
 		Address solana.PublicKey `json:"address"` // compatible with earlier versions
 	} `json:"metadata"`
 	Instructions []struct {
-		Name          string `json:"name"`
-		Discriminator []byte `json:"discriminator"`
-		Accounts      []struct {
-			Name      string   `json:"name"`
-			Relations []string `json:"relations,omitempty"`
-			Writable  bool     `json:"writable,omitempty"`
-			Pda       *Pda     `json:"pda,omitempty"`
-			Signer    bool     `json:"signer,omitempty"`
-			Address   string   `json:"address,omitempty"`
-			Docs      []string `json:"docs,omitempty"`
-		} `json:"accounts"`
-		Args []struct {
+		Name          string    `json:"name"`
+		Discriminator []byte    `json:"discriminator"`
+		Accounts      []Account `json:"accounts"`
+		Args          []struct {
 			Name string   `json:"name"`
 			Type TypeKind `json:"type"`
 		} `json:"args"`
@@ -92,6 +84,16 @@ type Type struct {
 		Type TypeKind `json:"type"`
 		Docs []string `json:"docs,omitempty"`
 	} `json:"fields"`
+}
+
+type Account struct {
+	Name      string   `json:"name"`
+	Relations []string `json:"relations,omitempty"`
+	Writable  bool     `json:"writable,omitempty"`
+	Pda       *Pda     `json:"pda,omitempty"`
+	Signer    bool     `json:"signer,omitempty"`
+	Address   string   `json:"address,omitempty"`
+	Docs      []string `json:"docs,omitempty"`
 }
 
 type TypeKind struct {
