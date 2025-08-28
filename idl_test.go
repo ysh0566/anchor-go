@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestArrayElement_UnmarshalJSON(t *testing.T) {
@@ -64,7 +65,7 @@ func TestTypeKind_UnmarshalJSON(t *testing.T) {
 	}
 	`), &kind)
 		require.NoError(t, err)
-		require.Equal(t, "Foo", kind.Defined)
+		require.Equal(t, "Foo", kind.Defined.Name)
 	})
 	t.Run("array", func(t *testing.T) {
 		var kind TypeKind

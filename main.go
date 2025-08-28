@@ -36,9 +36,6 @@ func main() {
 		if err := json.Unmarshal(data, &idl); err != nil {
 			return fmt.Errorf("unmarshal idl failed: %v", err)
 		}
-		for i := range idl.Instructions {
-			idl.Instructions[i].Accounts = sortAccounts(idl.Instructions[i].Accounts)
-		}
 		src, err := generate(&idl, *packageName, *keepComment, *decodeStruct, *instructions)
 		if err != nil {
 			return err
@@ -89,6 +86,18 @@ func generate(idl *IDL,
 		if t.Name == "" {
 			continue
 		}
+
+		if t.Type.Kind == "enum" {
+			f.Add(jen.Type().Id("Side").Qual("github.com/gagliardetto/binary", "BorshEnum"))
+			enums := make([]jen.Code, 0)
+			for _, enum := range t.Type.Variants {
+				enums = append(enums, jen.Id(fmt.Sprintf("%s%s", t.Name, enum.Name)))
+			}
+			enums[0] = enums[0].(*jen.Statement).Id("Side").Op("=").Id("iota")
+			f.Add(jen.Const().Defs(enums...))
+			continue
+		}
+
 		if t.Type.Kind != "struct" {
 			color.Cyan("type %s is not a struct, skipping", t.Name)
 			continue
@@ -361,7 +370,11 @@ func generateInstructions(idl *IDL, file *jen.File, keepComment bool) error {
 				).
 				Line(),
 			)
+		}
 
+		sortedAccounts := sortAccounts(instruction.Accounts)
+		for _, acct := range sortedAccounts {
+			accountPublicName := snakeToCamel(acct.Name)
 			if acct.Address != "" {
 				calculateAccountsCode.Add(
 					jen.If(jen.Id("m").Dot("accounts").Dot(accountPublicName).Dot("IsZero").Call()).Block(

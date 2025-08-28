@@ -84,6 +84,9 @@ type Type struct {
 		Type TypeKind `json:"type"`
 		Docs []string `json:"docs,omitempty"`
 	} `json:"fields"`
+	Variants []struct {
+		Name string `json:"name"`
+	} `json:"variants"`
 }
 
 type Account struct {
@@ -122,7 +125,7 @@ func (kind TypeKind) GoType() jen.Code {
 		case "u64":
 			return jen.Uint64()
 		case "u128":
-			return jen.Op("*").Qual("math/big", "Int")
+			return jen.Qual("github.com/gagliardetto/binary", "Uint128")
 		case "i8":
 			return jen.Int8()
 		case "i16":
@@ -132,7 +135,7 @@ func (kind TypeKind) GoType() jen.Code {
 		case "i64":
 			return jen.Int64()
 		case "i128":
-			return nil // Not supported yet
+			return jen.Qual("github.com/gagliardetto/binary", "Int128")
 		case "f32", "f64":
 			return jen.Id(fmt.Sprintf("float%s", string([]byte(scalar)[1:])))
 		case "string":
